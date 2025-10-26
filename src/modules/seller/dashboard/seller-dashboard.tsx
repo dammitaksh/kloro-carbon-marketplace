@@ -51,7 +51,7 @@ export default function SellerDashboard() {
               <div className="flex-1">
                 <div className="font-semibold text-green-900 mb-1">Welcome to your Seller Dashboard!</div>
                 <div className="text-sm text-green-800 mb-3">
-                  You've successfully created your organization profile. To start selling carbon credits, you'll need to:
+                  You&apos;ve successfully created your organization profile. To start selling carbon credits, you&apos;ll need to:
                 </div>
                 <div className="space-y-1 text-sm text-green-800">
                   <div className="flex items-center gap-2">

@@ -201,7 +201,7 @@ export function ReportUploadSection() {
       {/* Alternative Manual Entry */}
       <div className="text-center">
         <div className="text-sm text-gray-600 mb-2">
-          Don't have reports ready?
+          Don&apos;t have reports ready?
         </div>
         <Button type="button" variant="link" className="text-sm">
           Enter data manually instead

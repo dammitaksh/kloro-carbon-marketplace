@@ -19,9 +19,9 @@ export interface BlockchainConfig {
 }
 
 class BlockchainService {
-  private provider: ethers.JsonRpcProvider;
-  private wallet: ethers.Wallet;
-  private contract: ethers.Contract;
+  private provider!: ethers.JsonRpcProvider;
+  private wallet!: ethers.Wallet;
+  private contract!: ethers.Contract;
   private isInitialized = false;
 
   constructor() {

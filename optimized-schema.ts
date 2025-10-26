@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, pgEnum, decimal, jsonb, integer, varchar, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 // ============================================
-// ENUMS (ENHANCED)
+// ENUMS (UPDATED)
 // ============================================
 
 // Updated to include all 4 actors as discussed
@@ -10,10 +10,10 @@ export const userRoleEnum = pgEnum('user_role', ['buyer', 'seller', 'admin', 'in
 export const verificationStatusEnum = pgEnum('verification_status', ['pending', 'verified', 'rejected']);
 export const transactionStatusEnum = pgEnum('transaction_status', ['pending', 'completed', 'failed', 'cancelled']);
 export const creditStatusEnum = pgEnum('credit_status', ['available', 'reserved', 'sold', 'retired']);
-export const projectTypeEnum = pgEnum('project_type', ['reforestation', 'renewable_energy', 'waste_management', 'methane_capture', 'hydro_power', 'afforestation', 'solar_energy', 'wind_energy', 'other']);
 
 // Enhanced project lifecycle
 export const projectStatusEnum = pgEnum('project_status', ['draft', 'submitted', 'under_review', 'approved', 'active', 'rejected', 'suspended']);
+export const projectTypeEnum = pgEnum('project_type', ['reforestation', 'renewable_energy', 'waste_management', 'methane_capture', 'hydro_power', 'afforestation', 'solar_energy', 'wind_energy', 'other']);
 
 // Certification standards as discussed
 export const certificationStandardEnum = pgEnum('certification_standard', ['vcs', 'gold_standard', 'cdm', 'vera', 'aces', 'car', 'other']);
@@ -25,7 +25,7 @@ export const listingTypeEnum = pgEnum('listing_type', ['direct_sale', 'marketpla
 export const donationStatusEnum = pgEnum('donation_status', ['pending', 'completed', 'failed', 'refunded']);
 
 // ============================================
-// AUTHENTICATION & USER MANAGEMENT
+// AUTHENTICATION & USER MANAGEMENT (ENHANCED)
 // ============================================
 
 export const user = pgTable("user", {
@@ -35,12 +35,18 @@ export const user = pgTable("user", {
     emailVerified: boolean('email_verified').default(false).notNull(),
     image: text('image'),
     role: userRoleEnum('role').notNull().default('buyer'),
+    
+    // Enhanced user metadata
+    isActive: boolean('is_active').default(true).notNull(),
+    lastLoginAt: timestamp('last_login_at'),
+    
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
     emailIdx: uniqueIndex('user_email_idx').on(table.email),
 }));
 
+// Keep existing auth tables
 export const session = pgTable("session", {
     id: text('id').primaryKey(),
     expiresAt: timestamp('expires_at').notNull(),
@@ -78,7 +84,7 @@ export const verification = pgTable("verification", {
 });
 
 // ============================================
-// BUYER PROFILE
+// BUYER PROFILE (ENHANCED FOR INDUSTRIES)
 // ============================================
 
 export const buyerProfile = pgTable("buyer_profile", {
@@ -88,23 +94,33 @@ export const buyerProfile = pgTable("buyer_profile", {
     industry: text('industry'),
     address: jsonb('address'),
     
+    // Enhanced company details
+    companySize: text('company_size'), // 'startup', 'sme', 'large_enterprise'
+    website: text('website'),
+    taxId: text('tax_id'),
+    registrationNumber: text('registration_number'),
+    
     // Verification
     verificationStatus: verificationStatusEnum('verification_status').default('pending').notNull(),
     verifiedBy: text('verified_by').references(() => user.id),
     verifiedAt: timestamp('verified_at'),
     kycDocuments: jsonb('kyc_documents'),
     
-    // Carbon calculation fields
+    // Carbon calculation fields (your existing logic)
     employeeCount: integer('employee_count'),
     annualRevenue: decimal('annual_revenue', { precision: 15, scale: 2 }),
-    energyConsumption: decimal('energy_consumption', { precision: 10, scale: 2 }), // kWh per year
-    businessTravelDistance: decimal('business_travel_distance', { precision: 10, scale: 2 }), // km per year
-    calculatedCarbonFootprint: decimal('calculated_carbon_footprint', { precision: 10, scale: 2 }), // tCO2e per year
-    recommendedCredits: integer('recommended_credits'), // credits needed per year
+    energyConsumption: decimal('energy_consumption', { precision: 10, scale: 2 }),
+    businessTravelDistance: decimal('business_travel_distance', { precision: 10, scale: 2 }),
+    calculatedCarbonFootprint: decimal('calculated_carbon_footprint', { precision: 10, scale: 2 }),
+    recommendedCredits: integer('recommended_credits'),
     
-    // Wallet summary
+    // Wallet summary (individual credit tracking)
     totalCreditsOwned: decimal('total_credits_owned', { precision: 15, scale: 2 }).default('0').notNull(),
     totalCreditsRetired: decimal('total_credits_retired', { precision: 15, scale: 2 }).default('0').notNull(),
+    
+    // Spending tracking
+    totalSpent: decimal('total_spent', { precision: 15, scale: 2 }).default('0').notNull(),
+    preferredPaymentMethod: text('preferred_payment_method'),
     
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull()
@@ -143,14 +159,14 @@ export const individualProfile = pgTable("individual_profile", {
 }));
 
 // ============================================
-// SELLER PROFILE
+// SELLER PROFILE (ENHANCED)
 // ============================================
 
 export const sellerProfile = pgTable("seller_profile", {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
     organizationName: text('organization_name').notNull(),
-    organizationType: text('organization_type'), // Company, NGO, Cooperative, etc.
+    organizationType: text('organization_type'),
     registrationNumber: text('registration_number'),
     taxId: text('tax_id'),
     website: text('website'),
@@ -168,16 +184,25 @@ export const sellerProfile = pgTable("seller_profile", {
     accountHolderName: text('account_holder_name'),
     ifscCode: text('ifsc_code'),
     
+    // Enhanced certifications
+    certifications: jsonb('certifications'), // Array of certification objects
+    operationalSince: timestamp('operational_since'),
+    teamSize: integer('team_size'),
+    
     // Verification
     verificationStatus: verificationStatusEnum('verification_status').default('pending').notNull(),
     verifiedBy: text('verified_by').references(() => user.id),
     verifiedAt: timestamp('verified_at'),
     kycDocuments: jsonb('kyc_documents'),
     
-    // Earnings summary
+    // Earnings summary (your existing)
     totalEarnings: decimal('total_earnings', { precision: 15, scale: 2 }).default('0').notNull(),
     totalWithdrawn: decimal('total_withdrawn', { precision: 15, scale: 2 }).default('0').notNull(),
     availableBalance: decimal('available_balance', { precision: 15, scale: 2 }).default('0').notNull(),
+    
+    // Performance metrics
+    totalCreditsSold: integer('total_credits_sold').default(0),
+    averageRating: decimal('average_rating', { precision: 3, scale: 2 }),
     
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull()
@@ -186,7 +211,7 @@ export const sellerProfile = pgTable("seller_profile", {
 }));
 
 // ============================================
-// PROJECTS & CERTIFICATIONS
+// PROJECTS (ENHANCED WITH APPROVAL WORKFLOW)
 // ============================================
 
 export const project = pgTable("project", {
@@ -205,7 +230,6 @@ export const project = pgTable("project", {
     
     // Enhanced project details
     certificationStandard: certificationStandardEnum('certification_standard').notNull(),
-    registry: text('registry'), // e.g., "Verra", "Gold Standard" (legacy field for compatibility)
     vintageYear: integer('vintage_year'),
     startDate: timestamp('start_date'),
     endDate: timestamp('end_date'), // For project completion
@@ -246,26 +270,10 @@ export const project = pgTable("project", {
     statusIdx: index('project_status_idx').on(table.projectStatus),
     verificationIdx: index('project_verification_status_idx').on(table.verificationStatus),
     countryIdx: index('project_country_idx').on(table.country),
-    certificationIdx: index('project_certification_idx').on(table.certificationStandard),
 }));
 
 // ============================================
-// WASTE LEDGER (Buyer Carbon Tracking)
-// ============================================
-
-export const wasteLedger = pgTable("waste_ledger", {
-    id: text('id').primaryKey(),
-    buyerId: text('buyer_id').notNull().references(() => buyerProfile.id, { onDelete: 'cascade' }),
-    description: text('description').notNull(),
-    co2eAmount: decimal('co2e_amount', { precision: 10, scale: 2 }).notNull(),
-    recordedDate: timestamp('recorded_date').defaultNow().notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => ({
-    buyerIdx: index('waste_ledger_buyer_idx').on(table.buyerId),
-}));
-
-// ============================================
-// CARBON CREDITS
+// CARBON CREDITS (INDIVIDUAL TRACKING)
 // ============================================
 
 export const carbonCredit = pgTable("carbon_credit", {
@@ -273,12 +281,11 @@ export const carbonCredit = pgTable("carbon_credit", {
     projectId: text('project_id').notNull().references(() => project.id, { onDelete: 'cascade' }),
     
     // Individual credit tracking (as discussed)
-    serialNumber: text('serial_number').unique(), // Each credit gets unique serial (optional for batch-style records)
+    serialNumber: text('serial_number').unique().notNull(), // Each credit gets unique serial
     batchId: text('batch_id'), // Credits can belong to batches for easier management
     
-    // Credit details (support batch-style listings)
-    quantity: integer('quantity').notNull().default(1),
-    availableQuantity: integer('available_quantity').notNull().default(0),
+    // Credit details (simplified since each credit = 1 tCO2e)
+    quantity: integer('quantity').notNull().default(1), // Always 1 for individual tracking
     pricePerCredit: decimal('price_per_credit', { precision: 10, scale: 2 }).notNull(),
     
     // Enhanced status and listing
@@ -293,7 +300,7 @@ export const carbonCredit = pgTable("carbon_credit", {
     retirementReason: text('retirement_reason'),
     
     // Quality and metadata
-    vintageYear: integer('vintage_year'),
+    vintageYear: integer('vintage_year').notNull(),
     certificationDetails: jsonb('certification_details'),
     qualityScore: decimal('quality_score', { precision: 3, scale: 2 }),
     
@@ -306,7 +313,6 @@ export const carbonCredit = pgTable("carbon_credit", {
     serialIdx: uniqueIndex('carbon_credit_serial_idx').on(table.serialNumber),
     batchIdx: index('carbon_credit_batch_idx').on(table.batchId),
     listingTypeIdx: index('carbon_credit_listing_type_idx').on(table.listingType),
-    vintageIdx: index('carbon_credit_vintage_idx').on(table.vintageYear),
 }));
 
 // ============================================
@@ -351,7 +357,7 @@ export const donation = pgTable('donation', {
 }));
 
 // ============================================
-// TRANSACTIONS
+// TRANSACTIONS (ENHANCED)
 // ============================================
 
 export const transaction = pgTable("transaction", {
@@ -359,10 +365,9 @@ export const transaction = pgTable("transaction", {
     buyerId: text('buyer_id').notNull().references(() => buyerProfile.id, { onDelete: 'no action' }),
     sellerId: text('seller_id').notNull().references(() => sellerProfile.id, { onDelete: 'no action' }),
     
-    // Support both legacy single-credit and new multi-credit models
-    creditId: text('credit_id').references(() => carbonCredit.id),
-    creditIds: jsonb('credit_ids'), // Array of individual credit IDs
-    quantity: integer('quantity').notNull(),
+    // Individual credits (changed from batch to individual)
+    creditIds: jsonb('credit_ids').notNull(), // Array of individual credit IDs
+    quantity: integer('quantity').notNull(), // Number of credits = array length
     
     // Pricing
     pricePerCredit: decimal('price_per_credit', { precision: 10, scale: 2 }).notNull(),
@@ -370,6 +375,7 @@ export const transaction = pgTable("transaction", {
     platformFee: decimal('platform_fee', { precision: 10, scale: 2 }),
     netAmount: decimal('net_amount', { precision: 10, scale: 2 }),
     
+    // Transaction flow
     status: transactionStatusEnum('status').default('pending').notNull(),
     transactionDate: timestamp('transaction_date').defaultNow().notNull(),
     completedAt: timestamp('completed_at'),
@@ -378,7 +384,7 @@ export const transaction = pgTable("transaction", {
     paymentMethod: text('payment_method'),
     paymentReference: text('payment_reference'),
     
-    // Blockchain integration fields
+    // Blockchain integration (your existing)
     blockchainTxHash: text('blockchain_tx_hash'),
     registry: text('registry'),
     certificateUrl: text('certificate_url'),
@@ -399,8 +405,19 @@ export const transaction = pgTable("transaction", {
 }));
 
 // ============================================
-// CERTIFICATE RECORDS
+// KEEP EXISTING TABLES (COMPATIBILITY)
 // ============================================
+
+export const wasteLedger = pgTable("waste_ledger", {
+    id: text('id').primaryKey(),
+    buyerId: text('buyer_id').notNull().references(() => buyerProfile.id, { onDelete: 'cascade' }),
+    description: text('description').notNull(),
+    co2eAmount: decimal('co2e_amount', { precision: 10, scale: 2 }).notNull(),
+    recordedDate: timestamp('recorded_date').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+    buyerIdx: index('waste_ledger_buyer_idx').on(table.buyerId),
+}));
 
 export const certificateRecord = pgTable("certificate_record", {
     id: text("id").primaryKey(),
@@ -414,10 +431,6 @@ export const certificateRecord = pgTable("certificate_record", {
     certIdx: uniqueIndex('certificate_record_cert_idx').on(table.certId),
     txnIdx: index('certificate_record_txn_idx').on(table.transactionId),
 }));
-
-// ============================================
-// CREDIT OWNERSHIP HISTORY (Audit Trail)
-// ============================================
 
 export const creditOwnershipHistory = pgTable('credit_ownership_history', {
     id: text('id').primaryKey(),
@@ -437,11 +450,7 @@ export const creditOwnershipHistory = pgTable('credit_ownership_history', {
     toUserIdx: index('credit_ownership_history_to_user_idx').on(table.toUserId),
 }));
 
-
-// ============================================
-// PLATFORM SETTINGS
-// ============================================
-
+// Keep your platform settings as key-value pairs
 export const platformSettings = pgTable('platform_settings', {
     id: text('id').primaryKey(),
     key: text('key').notNull().unique(),
@@ -456,7 +465,7 @@ export const platformSettings = pgTable('platform_settings', {
 }));
 
 // ============================================
-// RELATIONS
+// RELATIONS (ENHANCED)
 // ============================================
 
 export const userRelations = relations(user, ({ one, many }) => ({
@@ -513,13 +522,6 @@ export const projectRelations = relations(project, ({ one, many }) => ({
     donations: many(donation),
 }));
 
-export const wasteLedgerRelations = relations(wasteLedger, ({ one }) => ({
-    buyer: one(buyerProfile, { 
-        fields: [wasteLedger.buyerId], 
-        references: [buyerProfile.id] 
-    }),
-}));
-
 export const carbonCreditRelations = relations(carbonCredit, ({ one, many }) => ({
     project: one(project, { 
         fields: [carbonCredit.projectId], 
@@ -529,7 +531,6 @@ export const carbonCreditRelations = relations(carbonCredit, ({ one, many }) => 
         fields: [carbonCredit.currentOwnerId],
         references: [user.id],
     }),
-    transactions: many(transaction),
     ownershipHistory: many(creditOwnershipHistory),
 }));
 
@@ -552,10 +553,6 @@ export const transactionRelations = relations(transaction, ({ one }) => ({
     seller: one(sellerProfile, { 
         fields: [transaction.sellerId], 
         references: [sellerProfile.id] 
-    }),
-    credit: one(carbonCredit, { 
-        fields: [transaction.creditId], 
-        references: [carbonCredit.id] 
     }),
 }));
 
@@ -593,3 +590,9 @@ export const creditOwnershipHistoryRelations = relations(creditOwnershipHistory,
     }),
 }));
 
+export const wasteLedgerRelations = relations(wasteLedger, ({ one }) => ({
+    buyer: one(buyerProfile, { 
+        fields: [wasteLedger.buyerId], 
+        references: [buyerProfile.id] 
+    }),
+}));

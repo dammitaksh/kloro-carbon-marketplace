@@ -97,7 +97,7 @@ const sellerForm = useForm<z.infer<typeof sellerSchema>>({
         <CardContent className="p-4 space-y-4">
           <div className="space-y-1">
             <div className="text-xl font-semibold">What brings you to kloro?</div>
-            <div className="text-sm text-muted-foreground">Choose what you'd like to do to get started.</div>
+          <div className="text-sm text-muted-foreground">Choose what you&apos;d like to do to get started.</div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <RoleCard label="Buyer" active={role === "buyer"} onClick={() => setRoleState("buyer")} />
@@ -160,7 +160,7 @@ const sellerForm = useForm<z.infer<typeof sellerSchema>>({
                   <div className="border-t pt-4">
                     <h3 className="text-base font-semibold mb-2">Carbon Footprint Assessment</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Upload your sustainability reports, and we'll automatically analyze and calculate your company's carbon footprint.
+                      Upload your sustainability reports, and we&apos;ll automatically analyze and calculate your company&apos;s carbon footprint.
                     </p>
                   </div>
                   
@@ -272,7 +272,7 @@ const sellerForm = useForm<z.infer<typeof sellerSchema>>({
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <div className="text-sm font-medium text-blue-900 mb-1">Next Steps</div>
                     <div className="text-sm text-blue-800">
-                      After completing this form, you'll be guided to add your first carbon credit project and upload sustainability reports to calculate your credits.
+                      After completing this form, you&apos;ll be guided to add your first carbon credit project and upload sustainability reports to calculate your credits.
                     </div>
                   </div>
                 </div>

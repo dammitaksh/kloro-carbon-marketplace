@@ -1,84 +1,133 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Star, Shield, Leaf, Award } from "lucide-react";
 import BuyCreditsModal from "./components/buy-credits-modal";
+import { useRealTimeData, realTimeData } from "@/lib/real-time-data";
 
 type Credit = {
   id: string;
+  serialNumber: string;
+  batchId?: string;
   projectName: string | null;
-  registry: string | null;
-  location: string | null;
-  type: string | null;
-  vintageYear: number | null;
-  availableQuantity: number;
+  projectType: string | null;
+  projectLocation: string | null;
+  projectCountry: string | null;
+  certificationStandard: string | null;
+  registry: string | null; // Legacy compatibility
   pricePerCredit: string | number;
+  status: string;
+  listingType: string;
+  vintageYear: number | null;
+  qualityScore?: string;
+  sustainabilityRating?: string;
+  additionalityScore?: string;
+  permanenceRisk?: string;
+  sellerName?: string;
+  sellerType?: string;
+  aiReliabilityScore?: number;
+  marketPosition?: string;
+  impactScore?: number;
 };
 
 export default function MarketView() {
   const [open, setOpen] = useState<string | null>(null);
   const [price, setPrice] = useState([150, 1500]);
   const [buyFor, setBuyFor] = useState<any | null>(null);
-  const [items, setItems] = useState<Credit[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  const load = useCallback(async (showLoader = true) => {
-    if (showLoader) setLoading(true);
-    else setIsRefreshing(true);
-    
-    try {
-      const res = await fetch("/api/credits");
-      const data = await res.json();
-      setItems(data.credits ?? []);
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error("Failed to load credits:", error);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+  const [filters, setFilters] = useState({
+    projectType: '',
+    certificationStandard: '',
+    location: '',
+    listingType: 'both' as 'direct_sale' | 'marketplace_pool' | 'both',
+    sortBy: 'price' as 'price' | 'vintage' | 'quality' | 'type',
+    sortOrder: 'asc' as 'asc' | 'desc'
+  });
+  
+  // Use new real-time data system
+  const { data, loading, error } = useRealTimeData(
+    'individual-credits',
+    () => realTimeData.getAvailableCredits({
+      ...filters,
+      priceRange: [price[0], price[1]],
+      limit: 50
+    }),
+    { 
+      critical: true, 
+      autoRefresh: true,
+      cacheDuration: 30000 // 30 seconds
     }
-  }, []);
+  );
+  
+  const items: Credit[] = data?.credits || [];
+  const marketStats = data?.marketStats;
+  const lastUpdated = data?.timestamp ? new Date(data.timestamp) : null;
 
-  // Initial load
-  useEffect(() => { load(); }, [load]);
+  // Manual refresh function that triggers real-time data update
+  const handleRefresh = () => {
+    // Force refresh the data
+    realTimeData.fetchData(
+      'individual-credits',
+      () => realTimeData.getAvailableCredits({
+        ...filters,
+        priceRange: [price[0], price[1]],
+        limit: 50
+      }),
+      { 
+        critical: true, 
+        autoRefresh: true,
+        cacheDuration: 30000
+      }
+    );
+  };
+  
+  // Update filters and trigger data refresh
+  const updateFilters = (newFilters: Partial<typeof filters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+  };
 
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      load(false); // Don't show loading spinner for auto-refresh
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [load]);
-
-  // AI-based reliability scoring
-  const calculateReliabilityScore = (credit: Credit) => {
-    let score = 2; // Base score
+  // Enhanced reliability scoring using AI-computed scores
+  const getReliabilityDisplay = (credit: Credit) => {
+    const score = credit.aiReliabilityScore || 3.0;
+    const stars = Math.floor(score);
+    const hasHalf = score % 1 >= 0.5;
     
-    // Registry bonus
-    if (credit.registry === 'Gold Standard') score += 2;
-    else if (credit.registry === 'Verra') score += 1.5;
-    else if (credit.registry) score += 0.5;
+    return {
+      score,
+      stars,
+      hasHalf,
+      label: score >= 4.5 ? 'Excellent' : 
+             score >= 4.0 ? 'Very Good' :
+             score >= 3.5 ? 'Good' :
+             score >= 3.0 ? 'Fair' : 'Basic'
+    };
+  };
+  
+  // Market position indicator
+  const getMarketPositionColor = (position?: string) => {
+    switch (position) {
+      case 'excellent_value': return 'bg-green-100 text-green-800';
+      case 'fair_value': return 'bg-yellow-100 text-yellow-800';
+      case 'premium': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+  
+  // Get certification standard display
+  const getCertificationDisplay = (standard?: string) => {
+    const displays = {
+      'gold_standard': { name: 'Gold Standard', icon: Award, color: 'text-yellow-600' },
+      'vcs': { name: 'VCS', icon: Shield, color: 'text-blue-600' },
+      'cdm': { name: 'CDM', icon: Shield, color: 'text-green-600' },
+      'vera': { name: 'VERa', icon: Shield, color: 'text-purple-600' }
+    };
     
-    // Project type bonus (nature-based solutions are generally more reliable)
-    if (credit.type?.toLowerCase().includes('forest')) score += 1;
-    if (credit.type?.toLowerCase().includes('renewable')) score += 0.5;
-    
-    // Vintage bonus (newer credits are generally more reliable)
-    if (credit.vintageYear && credit.vintageYear >= 2022) score += 0.5;
-    
-    // Price reasonableness (too cheap might be suspicious)
-    const price = Number(credit.pricePerCredit);
-    if (price >= 500 && price <= 2000) score += 0.5;
-    
-    return Math.min(Math.floor(score), 5); // Cap at 5
+    return displays[standard as keyof typeof displays] || 
+           { name: standard || 'Unknown', icon: Shield, color: 'text-gray-600' };
   };
 
   return (
@@ -96,12 +145,12 @@ export default function MarketView() {
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => load(false)}
-          disabled={isRefreshing}
+          onClick={handleRefresh}
+          disabled={loading}
           className="gap-2"
         >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
       
@@ -109,14 +158,16 @@ export default function MarketView() {
       <Card className="lg:col-span-1 h-fit">
         <CardContent className="p-4 space-y-3">
           <h3 className="font-semibold">Filters</h3>
-          <Select>
-            <SelectTrigger><SelectValue placeholder="Credit Type" /></SelectTrigger>
+          <Select onValueChange={(value) => updateFilters({ projectType: value })}>
+            <SelectTrigger><SelectValue placeholder="Project Type" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="renewable">Renewable</SelectItem>
-              <SelectItem value="forestry">Forestry</SelectItem>
-              <SelectItem value="waste">Waste</SelectItem>
-              <SelectItem value="soil">Soil</SelectItem>
-              <SelectItem value="industrial">Industrial</SelectItem>
+              <SelectItem value="reforestation">Reforestation</SelectItem>
+              <SelectItem value="afforestation">Afforestation</SelectItem>
+              <SelectItem value="solar_energy">Solar Energy</SelectItem>
+              <SelectItem value="wind_energy">Wind Energy</SelectItem>
+              <SelectItem value="hydro_power">Hydro Power</SelectItem>
+              <SelectItem value="waste_management">Waste Management</SelectItem>
+              <SelectItem value="methane_capture">Methane Capture</SelectItem>
             </SelectContent>
           </Select>
           <Select>
@@ -127,12 +178,15 @@ export default function MarketView() {
               <SelectItem value="emea">EMEA</SelectItem>
             </SelectContent>
           </Select>
-          <Select>
-            <SelectTrigger><SelectValue placeholder="Registry" /></SelectTrigger>
+          <Select onValueChange={(value) => updateFilters({ certificationStandard: value })}>
+            <SelectTrigger><SelectValue placeholder="Certification" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="verra">Verra</SelectItem>
-              <SelectItem value="gold">Gold Standard</SelectItem>
-              <SelectItem value="bee">BEE</SelectItem>
+              <SelectItem value="gold_standard">Gold Standard</SelectItem>
+              <SelectItem value="vcs">VCS (Verra)</SelectItem>
+              <SelectItem value="cdm">CDM</SelectItem>
+              <SelectItem value="vera">VERa</SelectItem>
+              <SelectItem value="aces">ACES</SelectItem>
+              <SelectItem value="car">CAR</SelectItem>
             </SelectContent>
           </Select>
           <Select>
@@ -148,8 +202,27 @@ export default function MarketView() {
             <Slider min={0} max={2000} step={10} value={price} onValueChange={setPrice} />
             <div className="text-xs text-muted-foreground">₹{price[0]} - ₹{price[1]}</div>
           </div>
-          <Input placeholder="Search projects" />
-          <Button className="w-full">Apply</Button>
+          <Select onValueChange={(value) => updateFilters({ listingType: value as any })}>
+            <SelectTrigger><SelectValue placeholder="Listing Type" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="both">All Credits</SelectItem>
+              <SelectItem value="direct_sale">Direct Sale Only</SelectItem>
+              <SelectItem value="marketplace_pool">Marketplace Pool</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select onValueChange={(value) => updateFilters({ sortBy: value as any })}>
+            <SelectTrigger><SelectValue placeholder="Sort By" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="price">Price</SelectItem>
+              <SelectItem value="vintage">Vintage Year</SelectItem>
+              <SelectItem value="quality">Quality Score</SelectItem>
+              <SelectItem value="type">Project Type</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input 
+            placeholder="Search projects" 
+            onChange={(e) => updateFilters({ location: e.target.value })}
+          />
         </CardContent>
       </Card>
 
@@ -184,46 +257,135 @@ export default function MarketView() {
           ) : items.length === 0 ? (
             <div className="text-sm text-muted-foreground">No credits available right now.</div>
           ) : (
-            items.map((c, index) => {
-              // AI-based seller ranking logic
-              const isRecommended = (c.registry && ['Gold Standard', 'Verra'].includes(c.registry)) ||
-                                   (c.type && ['forestry', 'reforestation'].includes(c.type?.toLowerCase())) ||
-                                   (Number(c.pricePerCredit) >= 800 && Number(c.pricePerCredit) <= 1200);
+            items.map((credit, index) => {
+              const reliability = getReliabilityDisplay(credit);
+              const certification = getCertificationDisplay(credit.certificationStandard ?? undefined);
+              const CertIcon = certification.icon;
               
-              const reliabilityScore = calculateReliabilityScore(c);
+              // Enhanced AI-based recommendation logic
+              const isRecommended = (credit.aiReliabilityScore ?? 0) >= 4.0 || 
+                                   credit.marketPosition === 'excellent_value' ||
+                                   (credit.impactScore ?? 0) >= 4.0;
               
               return (
-                <Card key={c.id} className={`flex flex-col ${isRecommended ? 'border-emerald-200 bg-emerald-50/20' : ''}`}>
-                  <CardContent className="p-4 space-y-2">
+                <Card key={credit.id} className={`flex flex-col relative ${
+                  isRecommended ? 'border-emerald-200 bg-emerald-50/20' : ''
+                } ${credit.marketPosition === 'premium' ? 'border-purple-200' : ''}`}>
+                  <CardContent className="p-4 space-y-3">
+                    {/* Header with project name and badges */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg leading-tight">
+                          {credit.projectName || "Untitled Project"}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          {isRecommended && (
+                            <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-medium">
+                              AI Pick
+                            </span>
+                          )}
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            getMarketPositionColor(credit.marketPosition)
+                          }`}>
+                            {credit.marketPosition === 'excellent_value' ? 'Great Value' :
+                             credit.marketPosition === 'fair_value' ? 'Fair Price' :
+                             credit.marketPosition === 'premium' ? 'Premium' : 'Standard'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-green-600">
+                          ${Number(credit.pricePerCredit).toLocaleString()}
+                        </div>
+                        <div className="text-xs text-muted-foreground">per credit</div>
+                      </div>
+                    </div>
+
+                    {/* Certification and Reliability */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{c.projectName ?? "Untitled Project"}</h3>
-                        {isRecommended && (
-                          <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-medium">
-                            AI Pick
-                          </span>
-                        )}
+                        <CertIcon className={`h-4 w-4 ${certification.color}`} />
+                        <span className="text-sm font-medium">{certification.name}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">[Verified: {c.registry ?? "—"}]</span>
-                    </div>
-                    
-                    {/* AI Reliability Indicator */}
-                    <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <div key={i} className={`w-2 h-2 rounded-full ${
-                            i < reliabilityScore ? 'bg-emerald-500' : 'bg-gray-200'
-                          }`} />
-                        ))}
+                        <div className="flex">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className={`h-3 w-3 ${
+                              i < reliability.stars ? 'fill-yellow-400 text-yellow-400' :
+                              i === reliability.stars && reliability.hasHalf ? 'fill-yellow-200 text-yellow-400' :
+                              'fill-gray-200 text-gray-200'
+                            }`} />
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground ml-1">
+                          {reliability.label}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">Reliability Score</span>
                     </div>
-                    
-                    <div className="text-sm text-muted-foreground">Location: {c.location ?? "—"} | Type: {c.type ?? "—"} | Vintage: {c.vintageYear ?? "—"}</div>
-                    <div className="text-sm text-muted-foreground">Available: {Number(c.availableQuantity ?? 0).toLocaleString()} | Price: ₹{Number(c.pricePerCredit)}/credit</div>
-                    <div className="flex gap-2 mt-2">
-                      <Button size="sm" variant="outline" onClick={() => setOpen(c.id)}>Details</Button>
-                      <Button size="sm" onClick={() => setBuyFor({ id: c.id, title: c.projectName, registry: c.registry, location: c.location, type: c.type, vintage: c.vintageYear, available: Number(c.availableQuantity), price: Number(c.pricePerCredit) })}>Buy Credits</Button>
+
+                    {/* Project Details */}
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <div className="flex items-center justify-between">
+                        <span>Type:</span>
+                        <span className="font-medium">
+                          {credit.projectType?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || "—"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Location:</span>
+                        <span className="font-medium">{credit.projectLocation || "—"}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Vintage:</span>
+                        <span className="font-medium">{credit.vintageYear || "—"}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Serial:</span>
+                        <span className="font-mono text-xs">{credit.serialNumber}</span>
+                      </div>
+                    </div>
+
+                    {/* Impact Score */}
+                    {credit.impactScore && (
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-1">
+                          <Leaf className="h-4 w-4 text-green-600" />
+                          <span>Impact Score:</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-16 h-2 bg-gray-200 rounded-full">
+                            <div 
+                              className="h-2 bg-green-500 rounded-full" 
+                              style={{ width: `${(credit.impactScore / 5) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium">{credit.impactScore}/5</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mt-4">
+                      <Button size="sm" variant="outline" onClick={() => setOpen(credit.id)}>
+                        Details
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => setBuyFor({
+                          id: credit.id,
+                          title: credit.projectName,
+                          registry: credit.certificationStandard,
+                          location: credit.projectLocation,
+                          type: credit.projectType,
+                          vintage: credit.vintageYear,
+                          available: 1, // Individual credits
+                          price: Number(credit.pricePerCredit),
+                          serialNumber: credit.serialNumber
+                        })}
+                        className="flex-1"
+                      >
+                        Purchase Credit
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

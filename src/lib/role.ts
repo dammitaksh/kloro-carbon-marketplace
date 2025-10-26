@@ -1,4 +1,4 @@
-export type Role = "buyer" | "seller";
+export type Role = "buyer" | "seller" | "admin" | "individual";
 
 const KEY = "user_role";
 
@@ -11,7 +11,7 @@ export function setRole(role: Role) {
 export function getRole(): Role | null {
   try {
     const v = localStorage.getItem(KEY) as Role | null;
-    return v === "buyer" || v === "seller" ? v : null;
+    return v === "buyer" || v === "seller" || v === "admin" || v === "individual" ? v : null;
   } catch (_) {
     return null;
   }

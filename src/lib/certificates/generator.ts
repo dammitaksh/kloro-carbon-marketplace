@@ -7,17 +7,17 @@ export async function makeQrDataUrl(text: string): Promise<string> {
 
 export async function renderPdfFromHtml(html: string): Promise<Buffer> {
   // Launch Chromium via Puppeteer. In many environments, default Chromium works.
-  const browser = await puppeteer.launch({ headless: "new" });
+  const browser = await puppeteer.launch({ headless: true });
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdfBuffer = await page.pdf({
+    const pdfData = await page.pdf({
       format: "A4",
       printBackground: true,
       margin: { top: "24mm", bottom: "24mm", left: "16mm", right: "16mm" },
     });
     await page.close();
-    return pdfBuffer;
+    return Buffer.from(pdfData);
   } finally {
     await browser.close();
   }

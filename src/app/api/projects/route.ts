@@ -9,9 +9,10 @@ import { z } from "zod";
 const createProjectSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  type: z.enum(["reforestation", "renewable_energy", "waste_management", "methane_capture"]),
+  type: z.enum(["reforestation", "renewable_energy", "waste_management", "methane_capture", "afforestation", "solar_energy", "wind_energy", "other"]),
   location: z.string().optional(),
   registry: z.string().optional(),
+  certificationStandard: z.enum(["vcs", "gold_standard", "cdm", "vera", "aces", "car", "other"]).optional(),
   vintageYear: z.number().int().optional(),
 });
 
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
       type: parsed.data.type as any,
       location: (parsed.data.location ?? null) as any,
       registry: (parsed.data.registry ?? null) as any,
+      certificationStandard: (parsed.data.certificationStandard ?? 'other') as any,
       vintageYear: (parsed.data.vintageYear ?? null) as any,
     });
 

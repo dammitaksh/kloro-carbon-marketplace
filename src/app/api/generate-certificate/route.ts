@@ -95,10 +95,10 @@ export async function POST(req: NextRequest) {
     });
 
     // Set up colors
-    const primaryColor = [37, 99, 235]; // Blue
-    const secondaryColor = [34, 197, 94]; // Green
-    const textColor = [31, 41, 55]; // Dark gray
-    const lightGray = [156, 163, 175];
+    const primaryColor: [number, number, number] = [37, 99, 235]; // Blue
+    const secondaryColor: [number, number, number] = [34, 197, 94]; // Green
+    const textColor: [number, number, number] = [31, 41, 55]; // Dark gray
+    const lightGray: [number, number, number] = [156, 163, 175];
 
     // Add decorative border
     pdf.setDrawColor(37, 99, 235);
@@ -128,10 +128,10 @@ export async function POST(req: NextRequest) {
     pdf.setFontSize(10);
     pdf.text('Certificate ID:', 25, 70);
     pdf.setFontSize(12);
-    pdf.setFont(undefined, 'bold');
+    pdf.setFont('helvetica', 'bold');
     pdf.text(cert[0].certId, 65, 70);
     
-    pdf.setFont(undefined, 'normal');
+    pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(10);
     pdf.text('Transaction ID:', 25, 78);
     pdf.text('Issue Date:', 25, 86);
@@ -196,17 +196,17 @@ export async function POST(req: NextRequest) {
       pdf.rect(20, 225, 170, 25, 'F');
       
       pdf.setTextColor(...secondaryColor);
-      pdf.setFont(undefined, 'bold');
+      pdf.setFont('helvetica', 'bold');
       pdf.text('✓ BLOCKCHAIN VERIFIED', 25, 233);
       
       pdf.setTextColor(...textColor);
-      pdf.setFont(undefined, 'normal');
+      pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
       pdf.text('Transaction Hash:', 25, 240);
       pdf.setFont('courier', 'normal');
       pdf.text(txn.transaction.blockchainTxHash.substring(0, 40) + '...', 25, 246);
       
-      pdf.setFont(undefined, 'normal');
+      pdf.setFont('helvetica', 'normal');
       pdf.text('Polygon Testnet Explorer:', 25, 252);
       pdf.setTextColor(...primaryColor);
       pdf.setFontSize(8);
@@ -230,11 +230,11 @@ export async function POST(req: NextRequest) {
       pdf.rect(20, 225, 170, 20, 'F');
       
       pdf.setTextColor(180, 83, 9); // Orange color
-      pdf.setFont(undefined, 'bold');
+      pdf.setFont('helvetica', 'bold');
       pdf.text('⚠ DATABASE VERIFIED ONLY', 25, 233);
       
       pdf.setTextColor(...textColor);
-      pdf.setFont(undefined, 'normal');
+      pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
       pdf.text('This transaction was recorded in our database but not on blockchain.', 25, 240);
     }
@@ -245,7 +245,7 @@ export async function POST(req: NextRequest) {
     pdf.text('Certificate Verification:', 25, 268);
     pdf.setTextColor(...primaryColor);
     pdf.setFontSize(8);
-    pdf.text(cert[0].verificationUrl, 25, 274);
+    pdf.text(String(cert[0].verificationUrl || ''), 25, 274);
 
     // Add decorative elements
     pdf.setDrawColor(...secondaryColor);

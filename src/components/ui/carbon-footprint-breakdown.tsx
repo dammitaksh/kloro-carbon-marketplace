@@ -108,7 +108,7 @@ export function CarbonFootprintBreakdown({
                 Industry Average: 620 tCO₂e
               </div>
               <div className="text-sm text-blue-600">
-                You're 6% below average
+                You&apos;re 6% below average
               </div>
             </div>
           </div>

@@ -223,7 +223,7 @@ export default function ListCredits() {
                   <span>-{formatCurrency(platformFee)}</span>
                 </div>
                 <div className="flex justify-between font-semibold">
-                  <span>You'll Earn:</span>
+                  <span>You&apos;ll Earn:</span>
                   <span>{formatCurrency(expected)}</span>
                 </div>
               </div>
